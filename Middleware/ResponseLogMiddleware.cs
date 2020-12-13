@@ -15,7 +15,7 @@ namespace RequestLogMiddleware.Middleware
     public class ResponseLogMiddleware
     {
 
-        public class LogData
+        public class LogDataOut
         {
 
             public string Payload { get; set; }
@@ -33,8 +33,8 @@ namespace RequestLogMiddleware.Middleware
 
         }
 
-        private Func<LogData, string> _logLineFormatter;
-        private Func<LogData, string> logLineFormatter
+        private Func<LogDataOut, string> _logLineFormatter;
+        private Func<LogDataOut, string> logLineFormatter
         {
             get
             {
@@ -55,16 +55,16 @@ namespace RequestLogMiddleware.Middleware
         /// Override this to set the default formatter if none was supplied
         /// </summary>
         /// <returns></returns>
-        protected Func<LogData, string> DefaultFormatter()
+        protected Func<LogDataOut, string> DefaultFormatter()
         {
-            return (logData => $"{logData.DurationMs}ms \r\n {logData.Payload}");
+            return (LogDataOut => $"{LogDataOut.DurationMs}ms \r\n {LogDataOut.Payload}");
         }
 
         /// <summary>
         /// Used to set a custom formatter for this instance
         /// </summary>
         /// <param name="formatter"></param>
-        public void SetLogLineFormat(Func<LogData, string> formatter)
+        public void SetLogLineFormat(Func<LogDataOut, string> formatter)
         {
             this._logLineFormatter = formatter;
         }
@@ -74,29 +74,34 @@ namespace RequestLogMiddleware.Middleware
 
             var now = DateTime.Now;
             var watch = Stopwatch.StartNew();
+
+            // var ResponsePayloadStream = new MemoryStream();
+            //-- await context.Response.Body.CopyToAsync(ResponsePayloadStream);
+            var bodyStream = context.Response.Body;
+            var ResponsePayloadStream = new MemoryStream();
+            context.Response.Body = ResponsePayloadStream;
+
             await _next.Invoke(context);
             watch.Stop();
 
             var duration = watch.ElapsedMilliseconds;
 
-            var ResponsePayloadStream = new MemoryStream();
-            //-- await context.Response.Body.CopyToAsync(ResponsePayloadStream);
-            //-- ResponsePayloadStream = context.Response.Body;
 
             ResponsePayloadStream.Seek(0, SeekOrigin.Begin);
             var ResponsePayloadText = new StreamReader(ResponsePayloadStream).ReadToEnd();
-            ResponsePayloadStream.Seek(0, SeekOrigin.Begin);
-            context.Response.Body = ResponsePayloadStream;
 
-            var payload = ResponsePayloadText;
+            var payload = ResponsePayloadText;  //-- "Response Payload"; 
 
-            var logData = new LogData
+            var LogDataOut = new LogDataOut
             {
                 DurationMs = duration,
                 Payload = payload,
             };
 
-            _logger.LogInformation(this.logLineFormatter(logData));
+            _logger.LogInformation(this.logLineFormatter(LogDataOut));
+
+            ResponsePayloadStream.Seek(0, SeekOrigin.Begin);
+            await ResponsePayloadStream.CopyToAsync(bodyStream);
 
         }
     }

@@ -43,8 +43,8 @@ namespace RequestLogMiddleware
 
             app.UseAuthorization();
 
-            app.UseMiddleware<RequestLogMiddleware.Middleware.RequestLogMiddleware>();
             app.UseMiddleware<RequestLogMiddleware.Middleware.ResponseLogMiddleware>();
+            app.UseMiddleware<RequestLogMiddleware.Middleware.RequestLogMiddleware>();
 
 
             app.UseEndpoints(endpoints =>
