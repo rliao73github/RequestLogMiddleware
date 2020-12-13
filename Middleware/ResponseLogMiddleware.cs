@@ -12,6 +12,9 @@ using System.Globalization;
 
 namespace RequestLogMiddleware.Middleware
 {
+    [DebuggerDisplay("ResponsePayloadStream.Length = {ResponsePayloadStream.Length}")]
+    
+    [DebuggerDisplay("ResponsePayloadText.Length = {ResponsePayloadText.Length}")]
     public class ResponseLogMiddleware
     {
 
@@ -21,6 +24,8 @@ namespace RequestLogMiddleware.Middleware
             public string Payload { get; set; }
 
             public long DurationMs { get; set; }
+
+            public string ContentType { get; set; }
         }
 
         private readonly RequestDelegate _next;
@@ -57,7 +62,7 @@ namespace RequestLogMiddleware.Middleware
         /// <returns></returns>
         protected Func<LogDataOut, string> DefaultFormatter()
         {
-            return (LogDataOut => $"{LogDataOut.DurationMs}ms \r\n {LogDataOut.Payload}");
+            return (LogDataOut => $"{LogDataOut.ContentType}\r\n {LogDataOut.DurationMs}ms \r\n {LogDataOut.Payload}");
         }
 
         /// <summary>
@@ -78,6 +83,8 @@ namespace RequestLogMiddleware.Middleware
             // var ResponsePayloadStream = new MemoryStream();
             //-- await context.Response.Body.CopyToAsync(ResponsePayloadStream);
             var bodyStream = context.Response.Body;
+            var headerStream = context.Response.Headers.ToString();
+
             var ResponsePayloadStream = new MemoryStream();
             context.Response.Body = ResponsePayloadStream;
 
@@ -91,15 +98,18 @@ namespace RequestLogMiddleware.Middleware
             var ResponsePayloadText = new StreamReader(ResponsePayloadStream).ReadToEnd();
 
             var payload = ResponsePayloadText;  //-- "Response Payload"; 
+            var contentType = context.Response.Headers["Content-Type"];
 
             var LogDataOut = new LogDataOut
             {
                 DurationMs = duration,
                 Payload = payload,
+                ContentType = contentType,
             };
 
-            _logger.LogInformation(this.logLineFormatter(LogDataOut));
-
+            if (LogDataOut.Payload.Length < 2048) { 
+                _logger.LogInformation(this.logLineFormatter(LogDataOut));
+            }
             ResponsePayloadStream.Seek(0, SeekOrigin.Begin);
             await ResponsePayloadStream.CopyToAsync(bodyStream);
 

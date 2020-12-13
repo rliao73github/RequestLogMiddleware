@@ -29,6 +29,7 @@ namespace RequestLogMiddleware.Middleware
             public string UserAgent { get; set; }
 
             public string Payload { get; set; }
+            public string Accept { get; set; }
 
             public long DurationMs { get; set; }
         }
@@ -67,7 +68,7 @@ namespace RequestLogMiddleware.Middleware
         /// <returns></returns>
         protected Func<LogData, string> DefaultFormatter()
         {
-            return (logData => $"{logData.RemoteAddr} - {logData.User} {logData.RequestTimestamp} \"{logData.RequestMethod} {logData.RequestPath} {logData.RequestProtocol}\" {logData.ResponseStatus} \"{logData.UserAgent}\" {logData.DurationMs}ms \r\n {logData.Payload}");
+            return (logData => $"{logData.Accept} \r\n {logData.RemoteAddr} - {logData.User} {logData.RequestTimestamp} \"{logData.RequestMethod} {logData.RequestPath} {logData.RequestProtocol}\" {logData.ResponseStatus} \"{logData.UserAgent}\" {logData.DurationMs}ms \r\n {logData.Payload}");
         }
 
         /// <summary>
@@ -92,6 +93,7 @@ namespace RequestLogMiddleware.Middleware
             var request = context.Request.Path + (string.IsNullOrEmpty(context.Request.QueryString.ToString()) ? "" : context.Request.QueryString.ToString());
             var responseStatus = context.Response.StatusCode;
             var userAgent = context.Request.Headers.ContainsKey("User-Agent") ? context.Request.Headers["User-Agent"].ToString() : "-";
+            var acceptFormat = context.Request.Headers["Accept"].ToString();
             var protocol = context.Request.Protocol;
             var duration = watch.ElapsedMilliseconds;
             var remoteAddr = context.Connection.RemoteIpAddress;
@@ -118,10 +120,12 @@ namespace RequestLogMiddleware.Middleware
                 UserAgent = userAgent,
                 DurationMs = duration,
                 Payload = payload,
+                Accept = acceptFormat,
             };
 
-            _logger.LogInformation(this.logLineFormatter(logData));
-
+            if( logData.Payload.Length < 2048) { 
+                _logger.LogInformation(this.logLineFormatter(logData));
+            }
         }
     }
 }
