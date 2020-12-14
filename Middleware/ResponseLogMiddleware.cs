@@ -80,13 +80,39 @@ namespace RequestLogMiddleware.Middleware
             var now = DateTime.Now;
             var watch = Stopwatch.StartNew();
 
-            // var ResponsePayloadStream = new MemoryStream();
-            //-- await context.Response.Body.CopyToAsync(ResponsePayloadStream);
+            //-- save Response.Body object memory location 
             var bodyStream = context.Response.Body;
             var headerStream = context.Response.Headers.ToString();
 
             var ResponsePayloadStream = new MemoryStream();
             context.Response.Body = ResponsePayloadStream;
+
+            bool equalBool;
+            if (Object.ReferenceEquals(bodyStream, ResponsePayloadStream))
+            {
+                equalBool = true;
+            }
+            else {
+                equalBool = false;
+            }
+
+            if (Object.ReferenceEquals(context.Response.Body, bodyStream))
+            {
+                equalBool = true;
+            }
+            else
+            {
+                equalBool = false;
+            }
+
+            if (Object.ReferenceEquals(context.Response.Body, ResponsePayloadStream))
+            {
+                equalBool = true;
+            }
+            else
+            {
+                equalBool = false;
+            }
 
             await _next.Invoke(context);
             watch.Stop();
